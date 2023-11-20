@@ -1,22 +1,23 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class BoidManager : MonoBehaviour
 {
     public GameObject boidPrefab;
     public int numBoids = 10;
     List<Boid> boids = new List<Boid>();
-    [Range(1, 100)] public float separationWeight;
-    [Range(1, 100)] public float alignmentWeight;
-    [Range(1,100)] public float cohesionWeight;
+    [Range(0.01f, 1)] public float separationWeight;
+    [Range(0.01f, 1)] public float alignmentWeight;
+    [Range(0.01f, 1)] public float cohesionWeight;
     public Transform preferredTransform;
     private Vector3 preferredPosition;
-    [Range(1,100)] public float stayInAreaWeight;
+    [Range(0.01f,1)] public float stayNearPositionWeight;
     
     public float minDistance = 2f;
-    public float speed = 4f;
-    public float rotationalInterpolation = 0.4f;
+    public float maxVelocity = 4f;
 
     private void Start()
     {
@@ -32,6 +33,7 @@ public class BoidManager : MonoBehaviour
     private void Update()
     {
         ApplyVelocity();
+        
     }
 
     Vector3 RuleCohesion(Boid _boid)
@@ -90,29 +92,29 @@ public class BoidManager : MonoBehaviour
         Vector3 velocityAdjustment = Vector3.zero;
         if (boidPosition.x < preferredPosition.x)
         {
-            velocityAdjustment.x = stayInAreaWeight * dist;
+            velocityAdjustment.x = stayNearPositionWeight;
         }
         else if (boidPosition.x > preferredPosition.x)
         {
-            velocityAdjustment.x = -stayInAreaWeight * dist;
+            velocityAdjustment.x = -stayNearPositionWeight;
         }
         
         if (boidPosition.y < preferredPosition.y)
         {
-            velocityAdjustment.y = stayInAreaWeight * dist;
+            velocityAdjustment.y = stayNearPositionWeight;
         }
         else if (boidPosition.y > preferredPosition.y)
         {
-            velocityAdjustment.y = -stayInAreaWeight * dist;
+            velocityAdjustment.y = -stayNearPositionWeight;
         }
         
         if (boidPosition.z < preferredPosition.z)
         {
-            velocityAdjustment.z = stayInAreaWeight * dist;
+            velocityAdjustment.z = stayNearPositionWeight;
         }
         else if (boidPosition.z > preferredPosition.z)
         {
-            velocityAdjustment.z = -stayInAreaWeight * dist;
+            velocityAdjustment.z = -stayNearPositionWeight;
         }
 
         return velocityAdjustment;
@@ -128,12 +130,18 @@ public class BoidManager : MonoBehaviour
             Vector3 v3 = RuleAlignment(b);
             Vector3 v4 = StayNearPosition(b);
 
-            Vector3 velocity = v1 + v2 + v3;
-            b.lastVelocity = b.velocity;
-            b.velocity = Vector3.ClampMagnitude(velocity, speed);
+            Vector3 velocity = v1 + v2 + v3 + v4;
+            b.velocity += velocity;
+            b.velocity = Vector3.ClampMagnitude(b.velocity, maxVelocity);
             b.transform.position += b.velocity * Time.deltaTime;
             b.transform.rotation = Quaternion.Lerp(b.transform.rotation, Quaternion.LookRotation(b.velocity), 0.1f);
         }
         
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawSphere(preferredTransform.position, 1.0f);
     }
 }
