@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,10 +7,10 @@ public class Boid : MonoBehaviour
 {
     public float rotationalInterpolation;
     public Vector3 velocity;
-    Vector3 lastVelocity;
+    public Vector3 lastVelocity;
 
-    private void LateUpdate()
+    private void Update()
     {
-        transform.position += velocity * Time.deltaTime;
+        
     }
 }

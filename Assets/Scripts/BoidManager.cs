@@ -7,23 +7,24 @@ public class BoidManager : MonoBehaviour
     public GameObject boidPrefab;
     public int numBoids = 10;
     List<Boid> boids = new List<Boid>();
-    [Range(0.01f,10)]
-    public float separationWeight;
-    [Range(1,10)]
-    public float alignmentWeight;
-    [Range(1,100)]
-    public float cohesionWeight;
+    [Range(1, 100)] public float separationWeight;
+    [Range(1, 100)] public float alignmentWeight;
+    [Range(1,100)] public float cohesionWeight;
+    public Transform preferredTransform;
+    private Vector3 preferredPosition;
+    [Range(1,100)] public float stayInAreaWeight;
+    
     public float minDistance = 2f;
     public float speed = 4f;
     public float rotationalInterpolation = 0.4f;
 
     private void Start()
     {
+        preferredPosition = preferredTransform.position;
         for (int i = 0; i < numBoids; i++)
         {
             GameObject b = Instantiate(boidPrefab);
-            b.transform.position = new Vector3(Random.Range(-20f, 20f), Random.Range(-20f, 20f), Random.Range(-20f, 20f));
-            b.GetComponent<Boid>().rotationalInterpolation = rotationalInterpolation;
+            b.transform.position = new Vector3(Random.Range(-40f, 40f), Random.Range(-40f, 40f), Random.Range(-40f, 40f));
             boids.Add(b.GetComponent<Boid>());
         }
     }
@@ -46,12 +47,12 @@ public class BoidManager : MonoBehaviour
             centerOfMass += b.transform.position;
         }
         centerOfMass /= boids.Count - 1;
-        return (centerOfMass - _boid.transform.position) / cohesionWeight;
+        return (centerOfMass - _boid.transform.position) * cohesionWeight;
     }
     
     Vector3 RuleSeparation(Boid _boid)
     {
-        Vector3 displacement = new Vector3();
+        Vector3 displacement = Vector3.zero;
         foreach (Boid b in boids)
         {
             if (b == _boid)
@@ -79,7 +80,42 @@ public class BoidManager : MonoBehaviour
             totalVelocity += b.velocity;
         }
         Vector3 newVelocity = new Vector3(totalVelocity.x / boids.Count-1, totalVelocity.y / boids.Count-1, totalVelocity.z / boids.Count-1);
-        return newVelocity / alignmentWeight;
+        return (newVelocity - _boid.velocity) * alignmentWeight;
+    }
+
+    Vector3 StayNearPosition(Boid _boid)
+    {
+        Vector3 boidPosition = _boid.transform.position;
+        float dist = Vector3.Distance(boidPosition, preferredPosition);
+        Vector3 velocityAdjustment = Vector3.zero;
+        if (boidPosition.x < preferredPosition.x)
+        {
+            velocityAdjustment.x = stayInAreaWeight * dist;
+        }
+        else if (boidPosition.x > preferredPosition.x)
+        {
+            velocityAdjustment.x = -stayInAreaWeight * dist;
+        }
+        
+        if (boidPosition.y < preferredPosition.y)
+        {
+            velocityAdjustment.y = stayInAreaWeight * dist;
+        }
+        else if (boidPosition.y > preferredPosition.y)
+        {
+            velocityAdjustment.y = -stayInAreaWeight * dist;
+        }
+        
+        if (boidPosition.z < preferredPosition.z)
+        {
+            velocityAdjustment.z = stayInAreaWeight * dist;
+        }
+        else if (boidPosition.z > preferredPosition.z)
+        {
+            velocityAdjustment.z = -stayInAreaWeight * dist;
+        }
+
+        return velocityAdjustment;
     }
     
 
@@ -90,11 +126,13 @@ public class BoidManager : MonoBehaviour
             Vector3 v1 = RuleCohesion(b);
             Vector3 v2 = RuleSeparation(b);
             Vector3 v3 = RuleAlignment(b);
+            Vector3 v4 = StayNearPosition(b);
 
-            Vector3 velocity = (v1 + v2 + v3).normalized;
-            b.velocity = Vector3.ClampMagnitude(velocity * speed, speed * 2);
-            //b.transform.Translate(b.velocity);
-            //b.transform.Rotate(...);
+            Vector3 velocity = v1 + v2 + v3;
+            b.lastVelocity = b.velocity;
+            b.velocity = Vector3.ClampMagnitude(velocity, speed);
+            b.transform.position += b.velocity * Time.deltaTime;
+            b.transform.rotation = Quaternion.Lerp(b.transform.rotation, Quaternion.LookRotation(b.velocity), 0.1f);
         }
         
     }
